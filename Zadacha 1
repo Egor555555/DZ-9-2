@@ -41,7 +41,7 @@ class CalendarApp:
     def load_events(self):
         events = {}
         try:
-            with open("events.txt", "r", encoding="utf-8" ) as file:
+            with open("events.txt", "r", encoding="utf-8") as file:
                 for line in file:
                     name, date_str = line.strip().split(", ")
                     date = datetime.strptime(date_str, "%d/%m/%Y")
