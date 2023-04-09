@@ -1,0 +1,109 @@
+import tkinter as tk
+from tkinter import messagebox
+from datetime import datetime, timedelta
+class CalendarApp:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Календарь")
+        self.master.iconbitmap("calendar.ico")
+        self.current_date = datetime.today()
+        self.months = {"Январь": 1, "Февраль": 2, "Март": 3, "Апрель": 4, "Май": 5, "Июнь": 6,
+                       "Июль": 7, "Август": 8, "Сентябрь": 9, "Октябрь": 10, "Ноябрь": 11, "Декабрь": 12}
+        self.events = self.load_events()
+        # Фреймы
+        self.top_frame = tk.Frame(self.master)
+        self.top_frame.pack(side=tk.TOP)
+        self.left_frame = tk.Frame(self.master)
+        self.left_frame.pack(side=tk.LEFT, padx=10)
+        self.right_frame = tk.Frame(self.master)
+        self.right_frame.pack(side=tk.RIGHT, padx=10)
+        self.bottom_frame = tk.Frame(self.master)
+        self.bottom_frame.pack(side=tk.BOTTOM, pady=10)
+        # Вывод текущей даты и дня недели
+        self.current_date_label = tk.Label(self.top_frame, text=self.current_date.strftime("%d.%m.%Y, %A"))
+        self.current_date_label.pack(pady=10)
+        # Ввод года и выбор месяца
+        tk.Label(self.left_frame, text="Год:").grid(row=0, column=0, padx=5, pady=5)
+        self.year_entry = tk.Entry(self.left_frame, width=10)
+        self.year_entry.grid(row=0, column=1, padx=5, pady=5)
+        self.year_entry.insert(0, str(self.current_date.year))
+        tk.Label(self.left_frame, text="Месяц:").grid(row=1, column=0, padx=5, pady=5)
+        self.month_var = tk.StringVar(self.left_frame)
+        self.month_var.set("Январь")
+        self.month_dropdown = tk.OptionMenu(self.left_frame, self.month_var, *self.months.keys())
+        self.month_dropdown.grid(row=1, column=1, padx=5, pady=5)
+        # Вывод информации о событиях
+        self.events_text = tk.Text(self.right_frame, width=50, height=20)
+        self.events_text.pack()
+        # Кнопки
+        tk.Button(self.bottom_frame, text="Просмотр", command=self.display_events).pack(side=tk.LEFT, padx=5)
+        tk.Button(self.bottom_frame, text="Назад", command=self.master.quit).pack(side=tk.RIGHT, padx=5)
+    def load_events(self):
+        events = {}
+        try:
+            with open("events.txt", "r", encoding="utf-8" ) as file:
+                for line in file:
+                    name, date_str = line.strip().split(", ")
+                    date = datetime.strptime(date_str, "%d/%m/%Y")
+                    events[name] = date
+        except FileNotFoundError:
+            pass
+        return events
+    def save_events(self):
+        with open("events.txt", "w") as file:
+            for name, date in self.events.items():
+                date_str = date.strftime("%d/%m/%Y")
+                file.write(f"{name}, {date_str}\n")
+    def add_event(self):
+        add_window = tk.Toplevel(self.master)
+        add_window.title("Добавить событие")
+        tk.Label(add_window, text="Название события:").grid(row=0, column=0, padx=5, pady=5)
+        event_name_entry = tk.Entry(add_window, width=30)
+        event_name_entry.grid(row=0, column=1, padx=5, pady=5)
+        tk.Label(add_window, text="Дата (ДД.ММ.ГГГГ):").grid(row=1, column=0, padx=5, pady=5)
+        date_entry = tk.Entry(add_window, width=15)
+        date_entry.grid(row=1, column=1, padx=5, pady=5)
+        def add_event_to_calendar():
+            name = event_name_entry.get().strip()
+            date_str = date_entry.get().strip()
+            if name and date_str:
+                try:
+                    date = datetime.strptime(date_str, "%d.%m.%Y")
+                    self.events[name] = date
+                    self.save_events()
+                    add_window.destroy()
+                except ValueError:
+                    messagebox.showerror("Ошибка", "Неверный формат даты (ДД.ММ.ГГГГ)")
+            else:
+                messagebox.showerror("Ошибка", "Введите название и дату события")
+        tk.Button(add_window, text="Добавить", command=add_event_to_calendar).grid(row=2, column=0, columnspan=2, padx=5, pady=5)
+    def display_events(self):
+        year_str = self.year_entry.get().strip()
+        month_str = self.month_var.get()
+        if year_str and month_str:
+            try:
+                year = int(year_str)
+                month = self.months[month_str]
+                events_to_display = []
+                for name, date in self.events.items():
+                    if date.year == year and date.month == month:
+                        events_to_display.append((name, date))
+                events_to_display.sort(key=lambda x: x[1])
+                self.events_text.delete("1.0", tk.END)
+                for name, date in events_to_display:
+                    days_to_event = (date.date() - self.current_date.date()).days
+                    if days_to_event < 0:
+                        days_to_event_str = f"({-days_to_event} дн. назад)"
+                    elif days_to_event == 0:
+                        days_to_event_str = "(Сегодня)"
+                    else:
+                        days_to_event_str = f"({days_to_event} дн. осталось)"
+                    self.events_text.insert(tk.END, f"{name} ({date.strftime('%d.%m.%Y')}, {date.strftime('%A')}) {days_to_event_str}\n")
+            except ValueError:
+                messagebox.showerror("Ошибка", "Неверный формат года")
+        else:
+            messagebox.showerror("Ошибка", "Введите год и месяц")
+root = tk.Tk()
+app = CalendarApp(root)
+tk.Button(app.top_frame, text="Добавить событие", command=app.add_event).pack(pady=10)
+root.mainloop()
